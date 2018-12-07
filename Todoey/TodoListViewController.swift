@@ -4,8 +4,16 @@ class TodoListViewController: UITableViewController {
 
     var itemArray = ["Find Ivy", "Buy Egg", "Destory Demo"]
     
+    let defaults = UserDefaults.standard
+    
+    //TODO: View did load
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        //Retrieve the data from UserDefault, show the updated array
+        if let items = defaults.array(forKey: "TodoListArray") as? [String] {
+            itemArray = items
+        }
         
     }
 
@@ -42,15 +50,20 @@ class TodoListViewController: UITableViewController {
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         
         var textField = UITextField()
-        let defaultItem : String = "New Item"
+        //let defaultItem : String = "New Item"
         
         //Pop up new alert
         let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
+            
             //What will happen once the user clicks the add item button on UIAlert
-            self.itemArray.append(textField.text ?? defaultItem)
-            //self.itemArray.append(textField.text!)
-            //Refresh the table viewn
+            //self.itemArray.append(textField.text ?? defaultItem)
+            self.itemArray.append(textField.text!)
+            
+            //Save updated itemArray to UserDefault, "key" is the identifier this array in UserDefaults
+            self.defaults.set(self.itemArray, forKey: "TodoListArray")
+            
+            //Refresh the table view
             self.tableView.reloadData()
         }
 
