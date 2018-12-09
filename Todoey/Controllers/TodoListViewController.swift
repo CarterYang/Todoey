@@ -11,11 +11,6 @@ class TodoListViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        //Retrieve the data from UserDefault, show the updated array
-//        if let items = defaults.array(forKey: "TodoListArray") as? [String] {
-//            itemArray = items
-//        }
-        
         //Create new object
         let newItem = Item()
         newItem.title = "Find Mike"
@@ -29,6 +24,11 @@ class TodoListViewController: UITableViewController {
         newItem3.title = "Destory Demo"
         itemArray.append(newItem3)
         
+        //Retrieve the data from UserDefault, show the updated array
+        if let items = defaults.array(forKey: "TodoListArray") as? [Item] {
+            itemArray = items
+        }
+        
     }
 
     //TODO: Tableview datasource methods
@@ -37,17 +37,17 @@ class TodoListViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
-                
-        cell.textLabel?.text = itemArray[indexPath.row].title
+        
+        let item = itemArray[indexPath.row]
+        
+        cell.textLabel?.text = item.title
         
         //Check the done property of object and display check mark
-        if itemArray[indexPath.row].done == true {
-            cell.accessoryType = .checkmark
-        }
-        else {
-            cell.accessoryType = .none
-        }
+        //Use Ternary Operator ==>
+        // value = condition ? valueIfTrue : valueIfFalse
+        cell.accessoryType = item.done ? .checkmark : .none
         
         return cell
     }
@@ -56,12 +56,7 @@ class TodoListViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         //print (itemArray[indexPath.row])
         
-        if itemArray[indexPath.row].done == false {
-            itemArray[indexPath.row].done = true
-        }
-        else {
-            itemArray[indexPath.row].done = false
-        }
+        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
         //Refresh the tableview by calling the Tableview datasource methods again to reload the data inorder to show the checkmark
         tableView.reloadData()
