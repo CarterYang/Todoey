@@ -1,29 +1,37 @@
 import UIKit
+import CoreData
 
 class TodoListViewController: UITableViewController {
 
     //Let itemArray to be the array of Item objects
     var itemArray = [Item]()
     
-    //Create a file path to the document folder
-    //Use appendingPathComponent to create unique P list file path to store the data
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    var selectedCategory : Category? {
+        //"didset" is going to happen as soon as the "selectedCategory" get set with a value
+        didSet {
+            //Call method to reterive data
+            loadItems()
+        }
+    }
     
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // TODO: View did load
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //Path where the data is being stored in current APP
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    
+    //Grab the reference of context inorder to CRUR data from core data
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    
+    ///////////////////////////////////////////////////////////////////////////
+    // MARK: View did load
+    ///////////////////////////////////////////////////////////////////////////
     override func viewDidLoad() {
         super.viewDidLoad()
         
         print(dataFilePath)
-        
-        //Call method to reterive data
-        loadItems()
     }
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //TODO: Tableview datasource methods
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
+    // MARK: Tableview datasource methods
+    ///////////////////////////////////////////////////////////////////////////
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return itemArray.count
     }
@@ -44,14 +52,19 @@ class TodoListViewController: UITableViewController {
         return cell
     }
     
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //TODO: Tableview delegate methods
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
+    //MARK: Tableview delegate methods
+    ///////////////////////////////////////////////////////////////////////////
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        //print (itemArray[indexPath.row])
         
         //Checkmark manipulation
-        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+        //itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+        itemArray[indexPath.row].setValue(!itemArray[indexPath.row].done, forKey: "done")
+        
+        //Delete from database
+        //Order matters! First delete in database then in array!
+        //context.delete(itemArray[indexPath.row])
+        //itemArray.remove(at: indexPath.row)
         
         //Call method to save data
         saveItems()
@@ -59,21 +72,22 @@ class TodoListViewController: UITableViewController {
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // TODO: add new items
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
+    // MARK: add new items
+    ///////////////////////////////////////////////////////////////////////////
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         
         var textField = UITextField()
-        //let defaultItem : String = "New Item"
         
-        //Pop up new alert
+        //Set up new alert
         let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             
             //What will happen once the user clicks the add item button on UIAlert
-            let newItem = Item()
+            let newItem = Item(context: self.context)
             newItem.title = textField.text!
+            newItem.done = false
+            newItem.parentCategory = self.selectedCategory
             self.itemArray.append(newItem)
             
             //Call method to save data
@@ -83,49 +97,96 @@ class TodoListViewController: UITableViewController {
         //Add text field in alert
         alert.addTextField { (alertTextField) in
             //Setup text field
-            alertTextField.placeholder = "Create new item"
             textField = alertTextField
+            alertTextField.placeholder = "Create new item"
         }
         
         alert.addAction(action)
         present(alert, animated: true, completion: nil)
     }
   
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // TODO: Model manipulation methods
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-    //Part 1: Encoding data with NSCoder
-    //Save updated itemArray to the p list we create before
+    ///////////////////////////////////////////////////////////////////////////
+    // MARK: Model manipulation methods
+    ///////////////////////////////////////////////////////////////////////////
+
+    //Conmmit context to save in persistentContainer, by calling "context.save()"
     func saveItems() {
-        let encoder = PropertyListEncoder()
         
         do {
-            let data = try encoder.encode(itemArray)
-            try data.write(to: dataFilePath!)
+            try context.save()
         }
         catch {
-            print("Error encoding item array, \(error)")
+            print("Error saving context \(error)")
         }
         
         //Refresh the tableview by calling the Tableview datasource methods again to reload the data
         self.tableView.reloadData()
     }
     
-    //Part 2: Decoding data with NSCoder
-    //Retrieve the data from UserDefault, show the updated array
-    func loadItems() {
-        if let data = try? Data(contentsOf: dataFilePath!) {
-            let decoder = PropertyListDecoder()
-            
-            do {
-                itemArray = try decoder.decode([Item].self, from: data)
-            }
-            catch {
-                print("Error decoding item array, \(error)")
-            }
+    //Retrieve the data from database
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil) {
+        
+        //Query the data to find the correspond result from parentCategory
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+        
+        //If the argument "predicate" is not nil
+        if let additionalPredicate = predicate {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
         }
+        //If the argument "predicate" is nil
+        else {
+            request.predicate = categoryPredicate
+        }
+        
+        //Do the fetch request and save the result to the "itemArray"
+        do {
+            //If fetch successed, save the result to "itemArray"
+            itemArray = try context.fetch(request)
+        }
+        catch {
+            print("Error fetching data from context \(error)")
+        }
+        
+        tableView.reloadData()
     }
     
+}
+
+///////////////////////////////////////////////////////////////////////////
+//MARK: search bar methods
+///////////////////////////////////////////////////////////////////////////
+extension TodoListViewController: UISearchBarDelegate {
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
+        
+        //Structure the query. ([cd] refers to "not case and diacritic sensitive")
+        //Add the query to the request
+        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        
+        //Sort the result from the database in the order of our choice
+        //Add the sort to the query
+        let sortDescriptor = NSSortDescriptor(key: "title", ascending: true)
+        request.sortDescriptors = [sortDescriptor]
+        
+        //Call function "LoadItem" with external parameter
+        loadItems(with: request, predicate: predicate)
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        
+        //Go back to the original list when cancel the search
+        if searchBar.text?.count == 0 {
+            loadItems()
+            
+            //Dismiss the cusor and keyboard, means asked to relinquish its status as first responder in its windows
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
+            
+        }
+        
+    }
 }
 
