@@ -6,7 +6,7 @@ class CategoryViewController: UITableViewController {
     //Initialize new realm
     let realm = try! Realm()
     
-    //var categories = [Category]()
+    //Set as the collection of result of Category object
     var categories: Results<Category>?
     
     ///////////////////////////////////////////////////////////////////////////
@@ -107,7 +107,7 @@ class CategoryViewController: UITableViewController {
     //Retrieve the data from database
     func loadCategories() {
         
-        //Pull out all the items inside realm of Category object
+        //Fetch all the items inside realm of Category object
         categories = realm.objects(Category.self)
         
         tableView.reloadData()

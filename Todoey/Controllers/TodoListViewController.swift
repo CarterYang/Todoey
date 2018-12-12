@@ -70,10 +70,10 @@ class TodoListViewController: UITableViewController {
                 print("Error saving done status, \(error)")
             }
         }
-
-        tableView.deselectRow(at: indexPath, animated: true)
         
         tableView.reloadData()
+        
+        tableView.deselectRow(at: indexPath, animated: true)
     }
     
     ///////////////////////////////////////////////////////////////////////////
