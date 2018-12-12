@@ -1,12 +1,13 @@
 import UIKit
-import CoreData
+import RealmSwift
 
 class CategoryViewController: UITableViewController {
 
-    var categories = [Category]()
+    //Initialize new realm
+    let realm = try! Realm()
     
-    //Grab the reference of context inorder to CRUR data from core data
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    //var categories = [Category]()
+    var categories: Results<Category>?
     
     ///////////////////////////////////////////////////////////////////////////
     // MARK: View did load
@@ -21,7 +22,8 @@ class CategoryViewController: UITableViewController {
     // MARK: Tableview datasource methods
     ///////////////////////////////////////////////////////////////////////////
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return categories.count
+        //If not nil return "count", if nil return 1; same as set a default value to it.
+        return categories?.count ?? 1
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexpath: IndexPath) -> UITableViewCell {
@@ -30,8 +32,7 @@ class CategoryViewController: UITableViewController {
         let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexpath)
         
         //Create the item inside each cell
-        let item = categories[indexpath.row]
-        cell.textLabel?.text = item.name
+        cell.textLabel?.text = categories?[indexpath.row].name ?? "Not Category Added Yet"
         
         return cell
     }
@@ -49,7 +50,7 @@ class CategoryViewController: UITableViewController {
         
         //Grab the category that correspond to the selected cell
         if let indexPath = tableView.indexPathForSelectedRow {
-            destinationVC.selectedCategory = categories[indexPath.row]
+            destinationVC.selectedCategory = categories?[indexPath.row]
         }
     }
     
@@ -63,13 +64,13 @@ class CategoryViewController: UITableViewController {
         //Create new alert and set up the new alert
         let alert = UIAlertController(title: "Add New Todoey Category", message: "", preferredStyle: .alert)
         let action = UIAlertAction(title: "Add Category", style: .default) { (action) in
+            
             //What will happen once the user clicks the add item button on UIAlert
-            let newCategory = Category(context: self.context)
+            let newCategory = Category()
             newCategory.name = textField.text!
-            self.categories.append(newCategory)
             
             //Call save function to save the created category
-            self.saveCategories()
+            self.save(category: newCategory)
         }
         
         //Add textfield in the alert
@@ -87,11 +88,13 @@ class CategoryViewController: UITableViewController {
     // MARK: Model manipulation methods
     ///////////////////////////////////////////////////////////////////////////
     
-    //Conmmit context to save in persistentContainer, by calling "context.save()"
-    func saveCategories() {
+    //Save date to realm
+    func save(category: Category) {
         
         do {
-            try context.save()
+            try realm.write {
+                realm.add(category)
+            }
         }
         catch {
             print("Error saving category \(error)")
@@ -102,16 +105,10 @@ class CategoryViewController: UITableViewController {
     }
     
     //Retrieve the data from database
-    func loadCategories(with request : NSFetchRequest<Category> = Category.fetchRequest()) {
+    func loadCategories() {
         
-        //Do the fetch request and save the result to the "itemArray"
-        do {
-            //If fetch successed, save the result to "categories"
-            categories = try context.fetch(request)
-        }
-        catch {
-            print("Error fetching data from context \(error)")
-        }
+        //Pull out all the items inside realm of Category object
+        categories = realm.objects(Category.self)
         
         tableView.reloadData()
     }

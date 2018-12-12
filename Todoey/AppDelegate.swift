@@ -8,6 +8,7 @@
 
 import UIKit
 import CoreData
+import RealmSwift
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -17,8 +18,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     //在用户点开APP，发生在viewDidLoad之前
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         
-        //Print out the path of UserDefauls file
-        print(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).last! as String)
+        //The location of the realm file
+        print(Realm.Configuration.defaultConfiguration.fileURL)
+        
+        //Initialize new realm
+        do {
+            let realm = try Realm()
+        }
+        catch {
+            print("Error initialising new realm, \(error)")
+        }
+        
+        
         
         return true
     }
