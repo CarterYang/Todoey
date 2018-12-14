@@ -21,7 +21,7 @@ class CategoryViewController: SwipeTableViewController  {
         //Dismiss the saparate line between cell
         tableView.separatorStyle = .none
     }
-
+    
     ///////////////////////////////////////////////////////////////////////////
     // MARK: Tableview datasource methods
     ///////////////////////////////////////////////////////////////////////////
@@ -35,11 +35,16 @@ class CategoryViewController: SwipeTableViewController  {
         let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         //Create the item inside each cell
-        cell.textLabel?.text = categories?[indexPath.row].name ?? "Not Category Added Yet"
-        cell.backgroundColor = UIColor(hexString: categories?[indexPath.row].color ?? "1D9BF6")
-        
-        //Generate a random color to the background of each cell by using Chameleon
-        //view.backgroundColor = UIColor.randomFlat
+        if let category = categories?[indexPath.row] {
+            cell.textLabel?.text = category.name
+            
+            guard let categoryColor = UIColor(hexString: category.color) else {fatalError()}
+            cell.backgroundColor = categoryColor
+            cell.textLabel?.textColor = ContrastColorOf(categoryColor, returnFlat: true)
+            
+            //Generate a random color to the background of each cell by using Chameleon
+            //view.backgroundColor = UIColor.randomFlat
+        }
         
         return cell
     }
