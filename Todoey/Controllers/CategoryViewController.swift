@@ -1,7 +1,8 @@
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class CategoryViewController: UITableViewController {
+class CategoryViewController: SwipeTableViewController  {
 
     //Initialize new realm
     let realm = try! Realm()
@@ -16,6 +17,9 @@ class CategoryViewController: UITableViewController {
         super.viewDidLoad()
         
         loadCategories()
+        
+        //Dismiss the saparate line between cell
+        tableView.separatorStyle = .none
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -26,13 +30,16 @@ class CategoryViewController: UITableViewController {
         return categories?.count ?? 1
     }
     
-    override func tableView(_ tableView: UITableView, cellForRowAt indexpath: IndexPath) -> UITableViewCell {
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        //Create a reusable cell for table
-        let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexpath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         //Create the item inside each cell
-        cell.textLabel?.text = categories?[indexpath.row].name ?? "Not Category Added Yet"
+        cell.textLabel?.text = categories?[indexPath.row].name ?? "Not Category Added Yet"
+        cell.backgroundColor = UIColor(hexString: categories?[indexPath.row].color ?? "1D9BF6")
+        
+        //Generate a random color to the background of each cell by using Chameleon
+        //view.backgroundColor = UIColor.randomFlat
         
         return cell
     }
@@ -68,6 +75,7 @@ class CategoryViewController: UITableViewController {
             //What will happen once the user clicks the add item button on UIAlert
             let newCategory = Category()
             newCategory.name = textField.text!
+            newCategory.color = UIColor.randomFlat.hexValue()
             
             //Call save function to save the created category
             self.save(category: newCategory)
@@ -82,6 +90,29 @@ class CategoryViewController: UITableViewController {
         
         alert.addAction(action)
         present(alert, animated: true, completion: nil)
+    }
+    
+    ///////////////////////////////////////////////////////////////////////////
+    // MARK: delete an items
+    ///////////////////////////////////////////////////////////////////////////
+    override func updateModel(at indexPath: IndexPath) {
+        
+        super.updateModel(at: indexPath)
+        
+        if let categoryForDeletion = categories?[indexPath.row] {
+            do {
+                try realm.write {
+                    realm.delete(categoryForDeletion.items)
+                    realm.delete(categoryForDeletion)
+                }
+            }
+            catch {
+                print("Error saving category \(error)")
+            }
+            
+            //Refresh the tableview by calling the Tableview datasource methods again to reload the data
+            //self.tableView.reloadData()
+        }
     }
     
     ///////////////////////////////////////////////////////////////////////////
